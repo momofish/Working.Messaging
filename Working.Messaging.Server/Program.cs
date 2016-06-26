@@ -16,8 +16,8 @@ namespace Working.Messaging.Server
                 x.Service<MessageServer>(s =>
                 {
                     s.ConstructUsing(name => new MessageServer());
-                    s.WhenStarted(tc => tc.Start());
-                    s.WhenStopped(tc => tc.Stop());
+                    s.WhenStarted(server => server.Start());
+                    s.WhenStopped(server => server.Stop());
                 });
                 x.RunAsLocalSystem();
             });
