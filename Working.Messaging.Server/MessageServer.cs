@@ -9,6 +9,7 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Working.Messaging.Utils;
 
 namespace Working.Messaging.Server
 {
@@ -70,13 +71,13 @@ namespace Working.Messaging.Server
                 }
 
                 Exception exception = null;
-                var message = Utils.Try(() => _serialize.Deserialize<Message>(state.Content.ToArray()), out exception, _logger);
+                var message = LangHelper.Try(() => _serialize.Deserialize<Message>(state.Content.ToArray()), out exception, _logger);
                 state.Content.SetLength(0);
                 _logger.DebugFormat("receive from {0}: {1}", handler.RemoteEndPoint, message);
                 if (exception != null)
                     Send(state, new Message { MsgType = MsgType.Exception, Content = exception.Message });
 
-                Utils.Try(() => HandleMessage(state, message), out exception, _logger);
+                LangHelper.Try(() => HandleMessage(state, message), out exception, _logger);
                 if (exception != null)
                     Send(state, new Message { MsgType = MsgType.Exception, Content = exception.Message });
 

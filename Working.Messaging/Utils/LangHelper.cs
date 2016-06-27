@@ -5,18 +5,10 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Working.Messaging.Server
+namespace Working.Messaging.Utils
 {
-    public static class Utils
+    public class LangHelper
     {
-        public static T[] Range<T>(this T[] array, int start, int length)
-        {
-            T[] range = null;
-            Array.Copy(array, start, range, 0, length);
-
-            return range;
-        }
-
         public static T Try<T>(Func<T> expression, out Exception exception, ILog logger = null)
         {
             try
