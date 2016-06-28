@@ -9,6 +9,8 @@ namespace Working.Messaging.ConsoleClient
 {
     class Program
     {
+        private BsonSerializer _serializer = new BsonSerializer();
+
         static void Main(string[] args)
         {
             var command = args.FirstOrDefault();
@@ -16,9 +18,23 @@ namespace Working.Messaging.ConsoleClient
             if (command == "test")
             {
                 var loginId = GetOption(args, "l");
+                var client = new MessageClient(loginId);
+                client.Connect();
+                var to = string.Empty;
+                const string TO_PREFIX = "@";
+                while (true)
+                {
+                    var input = Console.ReadLine();
+                    if (input.StartsWith(TO_PREFIX))
+                    {
+                        to = input.TrimStart(TO_PREFIX.ToCharArray());
+                    }
+                    else
+                    {
+                        client.Send(new Message { Id = DateTime.Now.Ticks, MsgType = MsgType.Content, Content = input });
+                    }
+                }
             }
-
-            Console.ReadLine();
         }
 
         private static string GetOption(string[] args, string opt)

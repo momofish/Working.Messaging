@@ -9,7 +9,7 @@ namespace Working.Messaging
 {
     public struct Message
     {
-        public UInt64? Id { get; set; }
+        public long? Id { get; set; }
         public MsgType? MsgType { get; set; }
         public string From { get; set; }
         public string To { get; set; }

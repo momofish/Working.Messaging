@@ -18,7 +18,7 @@ namespace Working.Messaging.Server
         private readonly ILog _logger;
 
         private readonly Socket _listener = null;
-        private readonly Dictionary<string, State> _states = new Dictionary<string, State>();
+        private readonly Dictionary<string, SocketState> _states = new Dictionary<string, SocketState>();
         private readonly BsonSerializer _serialize = new BsonSerializer();
 
         public MessageServer()
@@ -48,16 +48,16 @@ namespace Working.Messaging.Server
 
                 _logger.InfoFormat("accept from {0}", handler.RemoteEndPoint);
 
-                var state = new State();
-                state.WorkSocket = handler;
-                handler.BeginReceive(state.Buffer, 0, State.BUFFER_SIZE, 0, new AsyncCallback(ReceiveCallback), state);
+                var state = new SocketState();
+                state.Socket = handler;
+                handler.BeginReceive(state.Buffer, 0, SocketState.BUFFER_SIZE, 0, new AsyncCallback(ReceiveCallback), state);
             }, null);
         }
 
         public void ReceiveCallback(IAsyncResult ar)
         {
-            var state = (State)ar.AsyncState;
-            var handler = state.WorkSocket;
+            var state = (SocketState)ar.AsyncState;
+            var handler = state.Socket;
 
             var bytesRead = handler.EndReceive(ar);
             if (bytesRead > 0)
@@ -66,26 +66,26 @@ namespace Working.Messaging.Server
 
                 if (state.Buffer[bytesRead - 1] != 26)
                 {
-                    handler.BeginReceive(state.Buffer, 0, State.BUFFER_SIZE, 0, new AsyncCallback(ReceiveCallback), state);
+                    handler.BeginReceive(state.Buffer, 0, SocketState.BUFFER_SIZE, 0, new AsyncCallback(ReceiveCallback), state);
                     return;
                 }
 
                 Exception exception = null;
-                var message = LangHelper.Try(() => _serialize.Deserialize<Message>(state.Content.ToArray()), out exception, _logger);
+                var message = CoreHelper.Try(() => _serialize.Deserialize<Message>(state.Content.ToArray()), out exception, _logger);
                 state.Content.SetLength(0);
                 _logger.DebugFormat("receive from {0}: {1}", handler.RemoteEndPoint, message);
                 if (exception != null)
                     Send(state, new Message { MsgType = MsgType.Exception, Content = exception.Message });
 
-                LangHelper.Try(() => HandleMessage(state, message), out exception, _logger);
+                CoreHelper.Try(() => HandleMessage(state, message), out exception, _logger);
                 if (exception != null)
                     Send(state, new Message { MsgType = MsgType.Exception, Content = exception.Message });
 
-                handler.BeginReceive(state.Buffer, 0, State.BUFFER_SIZE, 0, new AsyncCallback(ReceiveCallback), state);
+                handler.BeginReceive(state.Buffer, 0, SocketState.BUFFER_SIZE, 0, new AsyncCallback(ReceiveCallback), state);
             }
         }
 
-        private void HandleMessage(State state, Message message)
+        private void HandleMessage(SocketState state, Message message)
         {
             message.Validate();
 
@@ -110,9 +110,9 @@ namespace Working.Messaging.Server
             }
         }
 
-        private void Send(State state, Message message)
+        private void Send(SocketState state, Message message)
         {
-            var handler = state.WorkSocket;
+            var handler = state.Socket;
             var toSendData = _serialize.Serialize(message);
             handler.BeginSend(toSendData, 0, toSendData.Length, 0, sendAsync =>
             {
@@ -129,13 +129,5 @@ namespace Working.Messaging.Server
                 _listener.Close();
             }
         }
-    }
-
-    public class State
-    {
-        public Socket WorkSocket = null;
-        public const int BUFFER_SIZE = 1024;
-        public byte[] Buffer = new byte[BUFFER_SIZE];
-        public MemoryStream Content = new MemoryStream();
     }
 }

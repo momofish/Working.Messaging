@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace Working.Messaging.Utils
 {
-    public class LangHelper
+    public class CoreHelper
     {
         public static T Try<T>(Func<T> expression, out Exception exception, ILog logger = null)
         {
