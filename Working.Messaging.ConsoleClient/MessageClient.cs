@@ -15,18 +15,18 @@ namespace Working.Messaging.ConsoleClient
 
         private readonly BsonSerializer _serialize = new BsonSerializer();
 
+        public bool LogMsg { get; set; }
         public SocketState SocketState { get; private set; }
-        public string LoginId { get; private set; }
 
         public MessageClient(string loginId)
         {
             _logger = LogManager.GetLogger(this.GetType());
 
-            LoginId = loginId;
-            SocketState = new SocketState();
+            LogMsg = true;
+            SocketState = new SocketState { Loginid = loginId };
         }
 
-        public void Connect(string loginId)
+        public void Connect()
         {
             try
             {
@@ -34,12 +34,12 @@ namespace Working.Messaging.ConsoleClient
                 SocketState.Socket = socket;
                 socket.Connect("localhost", 2000);
                 socket.BeginReceive(SocketState.Buffer, 0, SocketState.BUFFER_SIZE, 0, new AsyncCallback(ReceiveCallback), null);
-                Send(new Message { Id = DateTime.Now.Ticks, MsgType = MsgType.Login, From = loginId });
+                Send(new Message { Id = DateTime.Now.Ticks, MsgType = MsgType.Login, From = SocketState.Loginid });
             }
             catch (Exception ex)
             {
                 _logger.Error("connecting failed", ex);
-                Connect(loginId);
+                Connect();
             }
         }
 
@@ -52,7 +52,7 @@ namespace Working.Messaging.ConsoleClient
             if (socketError != SocketError.Success)
             {
                 _logger.ErrorFormat("connection error: {0}", socketError);
-                Connect(SocketState.Loginid);
+                Connect();
                 return;
             }
             if (bytesRead > 0)
@@ -83,16 +83,14 @@ namespace Working.Messaging.ConsoleClient
             Array.Resize(ref toSendData, toSendData.Length + 1);
             toSendData[toSendData.Length - 1] = 26;
 
-            handler.BeginSend(toSendData, 0, toSendData.Length, 0, sendAsync =>
-            {
-                handler.EndSend(sendAsync);
-                _logger.DebugFormat("sent to {0}: {1}", handler.RemoteEndPoint, message);
-            }, null);
+            handler.Send(toSendData, 0, toSendData.Length, 0);
+            _logger.DebugFormat("sent to {0}: {1}", handler.RemoteEndPoint, message);
         }
 
         private void HandleMessage(Message message)
         {
-            _logger.InfoFormat("received from {0}: {1}", message.From, message.Content);
+            if (LogMsg)
+                _logger.InfoFormat("received from {0}: {1}", message.From, message.Content);
         }
     }
 }

@@ -98,11 +98,14 @@ namespace Working.Messaging.Server
 
             if (message.MsgType == MsgType.Login)
             {
-                var from = message.From;
-                state.Loginid = from;
-                if (!_states.ContainsKey(from) || _states[from] != state)
-                    _states[from] = state;
-                _logger.InfoFormat("client [{0}]{1} logged in", state.Loginid, state.Socket.RemoteEndPoint);
+                lock (_states)
+                {
+                    var from = message.From;
+                    state.Loginid = from;
+                    if (!_states.ContainsKey(from) || _states[from] != state)
+                        _states[from] = state;
+                    _logger.InfoFormat("client [{0}]{1} logged in", state.Loginid, state.Socket.RemoteEndPoint);
+                }
             }
             else if (message.MsgType == MsgType.Content)
             {

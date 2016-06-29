@@ -12,7 +12,7 @@ namespace Working.Messaging
     {
         public string Loginid = null;
         public Socket Socket = null;
-        public const int BUFFER_SIZE = 1024;
+        public const int BUFFER_SIZE = 8 * 1024;
         public byte[] Buffer = new byte[BUFFER_SIZE];
         public MemoryStream Content = new MemoryStream();
     }
