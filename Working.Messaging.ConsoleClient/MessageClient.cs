@@ -13,7 +13,7 @@ namespace Working.Messaging.ConsoleClient
     {
         private readonly ILog _logger;
 
-        private readonly BsonSerializer _serialize = new BsonSerializer();
+        private readonly CustomSerializer _serialize = new CustomSerializer();
 
         public bool LogMsg { get; set; }
         public SocketState SocketState { get; private set; }

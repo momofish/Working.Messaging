@@ -10,7 +10,7 @@ namespace Working.Messaging.ConsoleClient
 {
     class Program
     {
-        private BsonSerializer _serializer = new BsonSerializer();
+        private CustomSerializer _serializer = new CustomSerializer();
 
         static void Main(string[] args)
         {
@@ -66,7 +66,7 @@ namespace Working.Messaging.ConsoleClient
                 for (var i = 0; i < userCount; i++)
                 {
                     threads[i].Start(i);
-                    Thread.Sleep(50);
+                    Thread.Sleep(100);
                 }
 
                 var timer = new System.Timers.Timer(1000);

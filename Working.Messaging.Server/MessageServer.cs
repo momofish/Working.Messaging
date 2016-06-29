@@ -19,7 +19,7 @@ namespace Working.Messaging.Server
 
         private readonly Socket _listener = null;
         private readonly Dictionary<string, SocketState> _states = new Dictionary<string, SocketState>();
-        private readonly BsonSerializer _serialize = new BsonSerializer();
+        private readonly CustomSerializer _serialize = new CustomSerializer();
 
         public MessageServer()
         {
@@ -79,7 +79,7 @@ namespace Working.Messaging.Server
 
                 Exception exception = null;
                 var message = CoreHelper.Try(() => _serialize.Deserialize<Message>(state.Content.ToArray()), out exception, _logger);
-                state.Content.SetLength(0);
+                state.Content.Flush();
                 _logger.DebugFormat("receive from {0}: {1}", handler.RemoteEndPoint, message);
                 if (exception != null)
                     Send(state, new Message { MsgType = MsgType.Exception, Content = exception.Message });
@@ -127,11 +127,8 @@ namespace Working.Messaging.Server
             Array.Resize(ref toSendData, toSendData.Length + 1);
             toSendData[toSendData.Length - 1] = 26;
 
-            handler.BeginSend(toSendData, 0, toSendData.Length, 0, sendAsync =>
-            {
-                handler.EndSend(sendAsync);
-                _logger.DebugFormat("sent to {0}: {1}", handler.RemoteEndPoint, message);
-            }, null);
+            handler.Send(toSendData, 0, toSendData.Length, 0);
+            _logger.DebugFormat("sent to {0}: {1}", handler.RemoteEndPoint, message);
         }
 
         public void Stop()
