@@ -9,14 +9,14 @@ using System.Threading.Tasks;
 
 namespace Working.Messaging
 {
-    public class BsonSerializer
+    public class BsonSerializer: ISerializer
     {
         private JsonSerializer _serializer = new JsonSerializer();
 
         public byte[] Serialize(object value)
         {
-            MemoryStream ms = new MemoryStream();
-            using (BsonWriter writer = new BsonWriter(ms))
+            var ms = new MemoryStream();
+            using (var writer = new BsonWriter(ms))
             {
                 _serializer.Serialize(writer, value);
             }
@@ -29,8 +29,8 @@ namespace Working.Messaging
             if (data == null || data.Length == 0)
                 return default(T);
 
-            MemoryStream ms = new MemoryStream(data);
-            using (BsonReader reader = new BsonReader(ms))
+            var ms = new MemoryStream(data);
+            using (var reader = new BsonReader(ms))
             {
                 return _serializer.Deserialize<T>(reader);
             }

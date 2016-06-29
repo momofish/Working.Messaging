@@ -10,8 +10,6 @@ namespace Working.Messaging.ConsoleClient
 {
     class Program
     {
-        private CustomSerializer _serializer = new CustomSerializer();
-
         static void Main(string[] args)
         {
             var command = args.FirstOrDefault();
@@ -49,8 +47,6 @@ namespace Working.Messaging.ConsoleClient
                         var client = new MessageClient(state.ToString());
                         client.LogMsg = false;
                         client.Connect();
-
-                        Thread.Sleep(10000);
 
                         while (true)
                         {

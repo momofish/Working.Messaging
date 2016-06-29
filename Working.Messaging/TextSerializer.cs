@@ -10,10 +10,8 @@ using System.Threading.Tasks;
 
 namespace Working.Messaging
 {
-    public class CustomSerializer
+    public class TextSerializer: ISerializer
     {
-        private JsonSerializer _serializer = new JsonSerializer();
-
         public byte[] Serialize(object value)
         {
             return Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(value));

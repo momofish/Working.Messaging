@@ -13,8 +13,6 @@ namespace Working.Messaging.ConsoleClient
     {
         private readonly ILog _logger;
 
-        private readonly CustomSerializer _serialize = new CustomSerializer();
-
         public bool LogMsg { get; set; }
         public SocketState SocketState { get; private set; }
 
@@ -57,16 +55,16 @@ namespace Working.Messaging.ConsoleClient
             }
             if (bytesRead > 0)
             {
-                SocketState.Content.Write(SocketState.Buffer, 0, bytesRead - 1);
+                SocketState.Content.Write(SocketState.Buffer, 0, bytesRead);
 
-                if (SocketState.Buffer[bytesRead - 1] != 26)
+                if (SocketState.Buffer[bytesRead - 1] != Message.EndTag[0])
                 {
                     handler.BeginReceive(SocketState.Buffer, 0, SocketState.BUFFER_SIZE, 0, new AsyncCallback(ReceiveCallback), null);
                     return;
                 }
 
                 Exception exception = null;
-                var message = CoreHelper.Try(() => _serialize.Deserialize<Message>(SocketState.Content.ToArray()), out exception, _logger);
+                var message = CoreHelper.Try(() => Message.ParseData(SocketState.Content.ToArray())[0], out exception, _logger);
                 SocketState.Content.SetLength(0);
                 _logger.DebugFormat("receive from {0}: {1}", handler.RemoteEndPoint, message);
 
@@ -79,9 +77,7 @@ namespace Working.Messaging.ConsoleClient
         public void Send(Message message)
         {
             var handler = SocketState.Socket;
-            var toSendData = _serialize.Serialize(message);
-            Array.Resize(ref toSendData, toSendData.Length + 1);
-            toSendData[toSendData.Length - 1] = 26;
+            var toSendData = message.Serialize();
 
             handler.Send(toSendData, 0, toSendData.Length, 0);
             _logger.DebugFormat("sent to {0}: {1}", handler.RemoteEndPoint, message);
