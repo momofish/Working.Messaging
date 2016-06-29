@@ -45,8 +45,7 @@ namespace Working.Messaging.Server
                 Accept(listener);
 
                 var handler = listener.EndAccept(acceptResult);
-
-                _logger.InfoFormat("accept from {0}", handler.RemoteEndPoint);
+                _logger.DebugFormat("accept from {0}", handler.RemoteEndPoint);
 
                 var state = new SocketState();
                 state.Socket = handler;
@@ -59,7 +58,15 @@ namespace Working.Messaging.Server
             var state = (SocketState)ar.AsyncState;
             var handler = state.Socket;
 
-            var bytesRead = handler.EndReceive(ar);
+            SocketError socketError;
+            var bytesRead = handler.EndReceive(ar, out socketError);
+            if (socketError != SocketError.Success)
+            {
+                _logger.ErrorFormat("client [{0}]{1} error: {2}", state.Loginid, handler.RemoteEndPoint, socketError);
+                handler.Close();
+                _states.Remove(state.Loginid);
+                return;
+            }
             if (bytesRead > 0)
             {
                 state.Content.Write(state.Buffer, 0, bytesRead - 1);
@@ -92,20 +99,19 @@ namespace Working.Messaging.Server
             if (message.MsgType == MsgType.Login)
             {
                 var from = message.From;
-                if (_states.ContainsKey(from))
-                {
-                    var oldState = _states[from];
-                    if (state != oldState)
-                        _states[from] = state;
-                }
+                state.Loginid = from;
+                if (!_states.ContainsKey(from) || _states[from] != state)
+                    _states[from] = state;
+                _logger.InfoFormat("client [{0}]{1} logged in", state.Loginid, state.Socket.RemoteEndPoint);
             }
             else if (message.MsgType == MsgType.Content)
             {
+                message.From = state.Loginid;
                 var to = message.To;
                 if (_states.ContainsKey(to))
                 {
                     var toState = _states[to];
-                    Send(state, message);
+                    Send(toState, message);
                 }
             }
         }
@@ -114,6 +120,10 @@ namespace Working.Messaging.Server
         {
             var handler = state.Socket;
             var toSendData = _serialize.Serialize(message);
+
+            Array.Resize(ref toSendData, toSendData.Length + 1);
+            toSendData[toSendData.Length - 1] = 26;
+
             handler.BeginSend(toSendData, 0, toSendData.Length, 0, sendAsync =>
             {
                 handler.EndSend(sendAsync);

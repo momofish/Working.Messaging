@@ -16,7 +16,7 @@ namespace Working.Messaging.ConsoleClient
         private readonly BsonSerializer _serialize = new BsonSerializer();
 
         public SocketState SocketState { get; private set; }
-        public string LoginId {get;private set;}
+        public string LoginId { get; private set; }
 
         public MessageClient(string loginId)
         {
@@ -26,38 +26,53 @@ namespace Working.Messaging.ConsoleClient
             SocketState = new SocketState();
         }
 
-        public void Connect()
+        public void Connect(string loginId)
         {
-            var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-            SocketState.Socket = socket;
-            socket.Connect("localhost", 2000);
-            socket.BeginReceive(SocketState.Buffer, 0, SocketState.BUFFER_SIZE, 0, new AsyncCallback(ReceiveCallback), SocketState);
+            try
+            {
+                var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+                SocketState.Socket = socket;
+                socket.Connect("localhost", 2000);
+                socket.BeginReceive(SocketState.Buffer, 0, SocketState.BUFFER_SIZE, 0, new AsyncCallback(ReceiveCallback), null);
+                Send(new Message { Id = DateTime.Now.Ticks, MsgType = MsgType.Login, From = loginId });
+            }
+            catch (Exception ex)
+            {
+                _logger.Error("connecting failed", ex);
+                Connect(loginId);
+            }
         }
 
         private void ReceiveCallback(IAsyncResult ar)
         {
-            var state = (SocketState)ar.AsyncState;
-            var handler = state.Socket;
+            var handler = SocketState.Socket;
 
-            var bytesRead = handler.EndReceive(ar);
+            SocketError socketError;
+            var bytesRead = handler.EndReceive(ar, out socketError);
+            if (socketError != SocketError.Success)
+            {
+                _logger.ErrorFormat("connection error: {0}", socketError);
+                Connect(SocketState.Loginid);
+                return;
+            }
             if (bytesRead > 0)
             {
-                state.Content.Write(state.Buffer, 0, bytesRead - 1);
+                SocketState.Content.Write(SocketState.Buffer, 0, bytesRead - 1);
 
-                if (state.Buffer[bytesRead - 1] != 26)
+                if (SocketState.Buffer[bytesRead - 1] != 26)
                 {
-                    handler.BeginReceive(state.Buffer, 0, SocketState.BUFFER_SIZE, 0, new AsyncCallback(ReceiveCallback), state);
+                    handler.BeginReceive(SocketState.Buffer, 0, SocketState.BUFFER_SIZE, 0, new AsyncCallback(ReceiveCallback), null);
                     return;
                 }
 
                 Exception exception = null;
-                var message = CoreHelper.Try(() => _serialize.Deserialize<Message>(state.Content.ToArray()), out exception, _logger);
-                state.Content.SetLength(0);
+                var message = CoreHelper.Try(() => _serialize.Deserialize<Message>(SocketState.Content.ToArray()), out exception, _logger);
+                SocketState.Content.SetLength(0);
                 _logger.DebugFormat("receive from {0}: {1}", handler.RemoteEndPoint, message);
 
                 CoreHelper.Try(() => HandleMessage(message), out exception, _logger);
 
-                handler.BeginReceive(state.Buffer, 0, SocketState.BUFFER_SIZE, 0, new AsyncCallback(ReceiveCallback), state);
+                handler.BeginReceive(SocketState.Buffer, 0, SocketState.BUFFER_SIZE, 0, new AsyncCallback(ReceiveCallback), null);
             }
         }
 
@@ -65,6 +80,9 @@ namespace Working.Messaging.ConsoleClient
         {
             var handler = SocketState.Socket;
             var toSendData = _serialize.Serialize(message);
+            Array.Resize(ref toSendData, toSendData.Length + 1);
+            toSendData[toSendData.Length - 1] = 26;
+
             handler.BeginSend(toSendData, 0, toSendData.Length, 0, sendAsync =>
             {
                 handler.EndSend(sendAsync);
@@ -74,7 +92,7 @@ namespace Working.Messaging.ConsoleClient
 
         private void HandleMessage(Message message)
         {
-            _logger.InfoFormat("received: ", message);
+            _logger.InfoFormat("received from {0}: {1}", message.From, message.Content);
         }
     }
 }

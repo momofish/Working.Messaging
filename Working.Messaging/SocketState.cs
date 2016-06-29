@@ -10,6 +10,7 @@ namespace Working.Messaging
 {
     public class SocketState
     {
+        public string Loginid = null;
         public Socket Socket = null;
         public const int BUFFER_SIZE = 1024;
         public byte[] Buffer = new byte[BUFFER_SIZE];

@@ -19,7 +19,7 @@ namespace Working.Messaging.ConsoleClient
             {
                 var loginId = GetOption(args, "l");
                 var client = new MessageClient(loginId);
-                client.Connect();
+                client.Connect(loginId);
                 var to = string.Empty;
                 const string TO_PREFIX = "@";
                 while (true)
@@ -31,9 +31,13 @@ namespace Working.Messaging.ConsoleClient
                     }
                     else
                     {
-                        client.Send(new Message { Id = DateTime.Now.Ticks, MsgType = MsgType.Content, Content = input });
+                        client.Send(new Message { Id = DateTime.Now.Ticks, MsgType = MsgType.Content, To = to, Content = input });
                     }
                 }
+            }
+            else if (command == "ptest")
+            {
+
             }
         }
 
