@@ -70,9 +70,16 @@ namespace Working.Messaging.Server
             {
                 state.Content.Write(state.Buffer, 0, bytesRead);
 
-                if (state.Buffer[bytesRead - 1] != Message.EndTag[0])
+                if (!state.Buffer.EndWith(Message.EndTag, bytesRead))
                 {
-                    handler.BeginReceive(state.Buffer, 0, SocketState.BUFFER_SIZE, 0, new AsyncCallback(ReceiveCallback), state);
+                    handler.BeginReceive(state.Buffer, 0, SocketState.BUFFER_SIZE, 0, out socketError, new AsyncCallback(ReceiveCallback), state);
+                    if (socketError != SocketError.Success)
+                    {
+                        _logger.ErrorFormat("client [{0}]{1} error: {2}", state.Loginid, handler.RemoteEndPoint, socketError);
+                        handler.Close();
+                        _states.Remove(state.Loginid);
+                        return;
+                    }
                     return;
                 }
 
@@ -80,22 +87,32 @@ namespace Working.Messaging.Server
                 var messages = CoreHelper.Try(() => Message.ParseData(state.Content.ToArray()), out exception, _logger);
                 state.Content.SetLength(0);
 
-                foreach (var message in messages)
+                try
                 {
-                    _logger.DebugFormat("receive from {0}: {1}", handler.RemoteEndPoint, message);
-                    if (exception != null)
-                        Send(state, new Message { MsgType = MsgType.Exception, Content = exception.Message });
+                    foreach (var message in messages)
+                    {
+                        _logger.DebugFormat("receive from {0}: {1}", handler.RemoteEndPoint, message);
+                        if (exception != null)
+                            Send(state, new Message { MsgType = MsgType.Exception, Content = exception.Message });
 
-                    CoreHelper.Try(() => HandleMessage(state, message), out exception, _logger);
-                    if (exception != null)
-                        Send(state, new Message { MsgType = MsgType.Exception, Content = exception.Message });
+                        CoreHelper.Try(() => DealMessage(state, message), out exception, _logger);
+                        if (exception != null)
+                            Send(state, new Message { MsgType = MsgType.Exception, Content = exception.Message });
+                    }
+
+                    handler.BeginReceive(state.Buffer, 0, SocketState.BUFFER_SIZE, 0, new AsyncCallback(ReceiveCallback), state);
                 }
-
-                handler.BeginReceive(state.Buffer, 0, SocketState.BUFFER_SIZE, 0, new AsyncCallback(ReceiveCallback), state);
+                catch (SocketException ex)
+                {
+                    _logger.ErrorFormat("client [{0}]{1} error: {2}", state.Loginid, handler.RemoteEndPoint, ex.Message);
+                    handler.Close();
+                    _states.Remove(state.Loginid);
+                    return;
+                }
             }
         }
 
-        private void HandleMessage(SocketState state, Message message)
+        private void DealMessage(SocketState state, Message message)
         {
             message.Validate();
 

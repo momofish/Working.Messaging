@@ -20,7 +20,7 @@ namespace Working.Messaging.Utils
             {
                 exception = ex;
                 if (logger != null)
-                    logger.Error(ex.Message, ex);
+                    logger.Error(ex.Message);
             }
 
             return default(T);
@@ -37,7 +37,7 @@ namespace Working.Messaging.Utils
             {
                 exception = ex;
                 if (logger != null)
-                    logger.Error(ex.Message, ex);
+                    logger.Error(ex.Message);
             }
         }
     }

@@ -5,13 +5,14 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
+using Working.Messaging.Utils;
 
 namespace Working.Messaging
 {
     public struct Message
     {
         private static readonly ISerializer _serializer = new BsonSerializer();
-        public static readonly byte[] EndTag = new byte[] { 26 };
+        public static readonly byte[] EndTag = new byte[] { 26, 98 };
         private static readonly int _lengthLen = 4;
 
         public long? Id { get; set; }
@@ -42,7 +43,7 @@ namespace Working.Messaging
 
         public byte[] Serialize()
         {
-            var data = _serializer.Serialize(this);
+            var data = _serializer.Serialize(this).EncryptAES("test");
 
             var result = new byte[_lengthLen + data.Length + EndTag.Length];
             var pos = 0;
@@ -73,7 +74,7 @@ namespace Working.Messaging
 
                 var bodyData = new byte[length];
                 Array.Copy(data, pos, bodyData, 0, length); pos += length;
-                var message = _serializer.Deserialize<Message>(bodyData);
+                var message = _serializer.Deserialize<Message>(bodyData.DecryptAES("test"));
                 messages.Add(message);
 
                 pos += EndTag.Length;

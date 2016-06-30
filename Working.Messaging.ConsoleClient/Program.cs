@@ -14,10 +14,12 @@ namespace Working.Messaging.ConsoleClient
         {
             var command = args.FirstOrDefault();
 
+            var serverName = GetOption(args, "s");
+
             if (command == "test")
             {
                 var loginId = GetOption(args, "l");
-                var client = new MessageClient(loginId);
+                var client = new MessageClient(serverName, loginId);
                 client.Connect();
                 var to = string.Empty;
                 const string TO_PREFIX = "@";
@@ -44,7 +46,7 @@ namespace Working.Messaging.ConsoleClient
                 {
                     var thread = new Thread(new ParameterizedThreadStart((state) =>
                     {
-                        var client = new MessageClient(state.ToString());
+                        var client = new MessageClient(serverName, state.ToString());
                         client.LogMsg = false;
                         client.Connect();
 
@@ -52,7 +54,7 @@ namespace Working.Messaging.ConsoleClient
                         {
                             for (var j = 0; j < userCount; j++)
                             {
-                                client.Send(new Message { Id = DateTime.Now.Ticks, MsgType = MsgType.Content, To = j.ToString(), Content = "test" });
+                                client.Send(new Message { Id = DateTime.Now.Ticks, MsgType = MsgType.Content, To = j.ToString(), Content = "新华社北京6月29日电（记者吴晶、姜潇）旗帜飞扬，歌声嘹亮。" });
                                 messageCount++;
                             }
                         }
@@ -68,6 +70,7 @@ namespace Working.Messaging.ConsoleClient
                 var timer = new System.Timers.Timer(1000);
                 var lastMessageCount = 0;
                 var maxMessagetCount = 0;
+                messageCount = 0;
                 timer.Elapsed += (object sender, System.Timers.ElapsedEventArgs e) =>
                 {
                     var count = messageCount - lastMessageCount;

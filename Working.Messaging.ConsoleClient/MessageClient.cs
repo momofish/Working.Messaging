@@ -13,14 +13,16 @@ namespace Working.Messaging.ConsoleClient
     {
         private readonly ILog _logger;
 
+        public string ServerName { get; set; }
         public bool LogMsg { get; set; }
         public SocketState SocketState { get; private set; }
 
-        public MessageClient(string loginId)
+        public MessageClient(string serverName, string loginId)
         {
             _logger = LogManager.GetLogger(this.GetType());
 
             LogMsg = true;
+            ServerName = serverName;
             SocketState = new SocketState { Loginid = loginId };
         }
 
@@ -30,7 +32,7 @@ namespace Working.Messaging.ConsoleClient
             {
                 var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
                 SocketState.Socket = socket;
-                socket.Connect("localhost", 2000);
+                socket.Connect(ServerName, 2000);
                 socket.BeginReceive(SocketState.Buffer, 0, SocketState.BUFFER_SIZE, 0, new AsyncCallback(ReceiveCallback), null);
                 Send(new Message { Id = DateTime.Now.Ticks, MsgType = MsgType.Login, From = SocketState.Loginid });
             }
@@ -57,18 +59,18 @@ namespace Working.Messaging.ConsoleClient
             {
                 SocketState.Content.Write(SocketState.Buffer, 0, bytesRead);
 
-                if (SocketState.Buffer[bytesRead - 1] != Message.EndTag[0])
+                if (!SocketState.Buffer.EndWith(Message.EndTag, bytesRead))
                 {
                     handler.BeginReceive(SocketState.Buffer, 0, SocketState.BUFFER_SIZE, 0, new AsyncCallback(ReceiveCallback), null);
                     return;
                 }
 
                 Exception exception = null;
-                var message = CoreHelper.Try(() => Message.ParseData(SocketState.Content.ToArray())[0], out exception, _logger);
+                //var message = CoreHelper.Try(() => Message.ParseData(SocketState.Content.ToArray())[0], out exception, _logger);
                 SocketState.Content.SetLength(0);
-                _logger.DebugFormat("receive from {0}: {1}", handler.RemoteEndPoint, message);
+                //_logger.DebugFormat("receive from {0}: {1}", handler.RemoteEndPoint, message);
 
-                CoreHelper.Try(() => HandleMessage(message), out exception, _logger);
+                //CoreHelper.Try(() => DealMessage(message), out exception, _logger);
 
                 handler.BeginReceive(SocketState.Buffer, 0, SocketState.BUFFER_SIZE, 0, new AsyncCallback(ReceiveCallback), null);
             }
@@ -83,7 +85,7 @@ namespace Working.Messaging.ConsoleClient
             _logger.DebugFormat("sent to {0}: {1}", handler.RemoteEndPoint, message);
         }
 
-        private void HandleMessage(Message message)
+        private void DealMessage(Message message)
         {
             if (LogMsg)
                 _logger.InfoFormat("received from {0}: {1}", message.From, message.Content);
