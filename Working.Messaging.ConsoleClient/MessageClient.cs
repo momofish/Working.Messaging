@@ -80,9 +80,14 @@ namespace Working.Messaging.ConsoleClient
         {
             var handler = SocketState.Socket;
             var toSendData = message.Serialize();
-
-            handler.Send(toSendData, 0, toSendData.Length, 0);
+            Send(toSendData);
             _logger.DebugFormat("sent to {0}: {1}", handler.RemoteEndPoint, message);
+        }
+
+        public void Send(byte[] toSendData)
+        {
+            var handler = SocketState.Socket;
+            handler.Send(toSendData, 0, toSendData.Length, 0);
         }
 
         private void DealMessage(Message message)

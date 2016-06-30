@@ -50,11 +50,14 @@ namespace Working.Messaging.ConsoleClient
                         client.LogMsg = false;
                         client.Connect();
 
+                        var messageDatas = new byte[userCount][];
+                        for (var j = 0; j < userCount; j++)
+                            messageDatas[j] = new Message { Id = DateTime.Now.Ticks, MsgType = MsgType.Content, To = j.ToString(), Content = "新华社北京6月29日电（记者吴晶、姜潇）旗帜飞扬，歌声嘹亮。" }.Serialize();
                         while (true)
                         {
                             for (var j = 0; j < userCount; j++)
                             {
-                                client.Send(new Message { Id = DateTime.Now.Ticks, MsgType = MsgType.Content, To = j.ToString(), Content = "新华社北京6月29日电（记者吴晶、姜潇）旗帜飞扬，歌声嘹亮。" });
+                                client.Send(messageDatas[j]);
                                 messageCount++;
                             }
                         }
